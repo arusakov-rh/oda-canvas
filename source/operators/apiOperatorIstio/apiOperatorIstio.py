@@ -228,10 +228,10 @@ def createOrPatchServiceMonitor(patch, spec, namespace, name, inHandler, compone
         if 'hostname' in spec.keys():
             hostname=spec['hostname']
 
-        SERVICE_MONITOR_GROUP = "monitoring.coreos.com"
+        SERVICE_MONITOR_GROUP = " monitoring.googleapis.com"
         SERVICE_MONITOR_VERSION = "v1"
         SERVICE_MONITOR_PLURAL = "servicemonitors"
-        SERVICE_MONITOR_KIND = "ServiceMonitor"
+        SERVICE_MONITOR_KIND = "PodMonitoring"
 
         # FIX required to optionally add hostname instead of ["*"]
         body = {
@@ -250,9 +250,9 @@ def createOrPatchServiceMonitor(patch, spec, namespace, name, inHandler, compone
                 "endpoints": [
                     {
                         "path": spec['path'],
-                        "interval": "15s",
+                        "interval": "10s",
                         "scheme": "http",
-                        "targetPort": spec['port']
+                        "port": spec['port']
                     }
                 ]
             }
