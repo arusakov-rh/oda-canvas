@@ -11,3 +11,5 @@ docker buildx build -t "tmforumodacanvas/component-istio-controller:0.2.6" --pla
 #docker build --file securityControllerAPIserver-keycloak-dockerfile -t tmforumodacanvas/security-listener:0.6.0 -t tmforumodacanvas/security-listener:latest -t tmforumodacanvas/security-listener:master .
 #docker push tmforumodacanvas/security-listener  --all-tags
 docker buildx build -t "tmforumodacanvas/security-listener:0.6.0" --platform "linux/amd64,linux/arm64" -f securityControllerAPIserver-keycloak-dockerfile . --push
+docker buildx build -t "tmforumorg/component-istio-controller:gcflavor-0.2.6" --platform "linux/amd64" -f component-IstioController-dockerfile . --push
+
