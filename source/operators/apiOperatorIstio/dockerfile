@@ -1,0 +1,2 @@
+FROM tmforumodacanvas/component-istio-controller:0.2.6
+COPY apiOperatorIstio.py componentOperator/componentOperator.py

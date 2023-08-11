@@ -15,7 +15,6 @@ It registers handler functions for:
 import kopf
 import kubernetes.client
 import logging
-import json
 from kubernetes.client.rest import ApiException
 import os
 
@@ -35,9 +34,6 @@ GROUP = "oda.tmforum.org"
 VERSION = "v1alpha4"
 APIS_PLURAL = "apis"
 
-# get environment variables
-OPENMETRICS_IMPLEMENTATION = os.environ.get('OPENMETRICS_IMPLEMENTATION', 'ServiceMonitor') # could be ServiceMonitor or PrometheusAnnotation or DataDogAnnotation
-print('Prometheus pattern set to ',OPENMETRICS_IMPLEMENTATION)
 
 
 @kopf.on.create('oda.tmforum.org', 'v1alpha4', 'apis', retries=5)
@@ -45,13 +41,13 @@ print('Prometheus pattern set to ',OPENMETRICS_IMPLEMENTATION)
 def apiStatus(meta, spec, status, body, namespace, labels, name, **kwargs):
     """Handler function for new or updated APIs.
     
-    Processes the spec of the API and create child Kubernetes VirtualService resources (for open-api type) or ServiceMonitor resources (for prometheus metrics type).
+    Processes the spec of the API and create child Kubernetes Ingress resources. The Kubernetes Ingress will expose the API to the outside.
 
     Args:
         * meta (Dict): The metadata from the API Custom Resource 
-        * spec (Dict): The spec from the API Custom Resource showing the intent (or desired state) 
-        * status (Dict): The status from the API Custom Resource showing the actual state.
-        * body (Dict): The entire API Custom Resource
+        * spec (Dict): The spec from the  showing the intent (or desired state) 
+        * status (Dict): The status from the  showing the actual state.
+        * body (Dict): The entire 
         * namespace (String): The namespace for the API Custom Resource
         * labels (Dict): The labels attached to the API Custom Resource. All ODA Components (and their children) should have a oda.tmforum.org/componentName label
         * name (String): The name of the API Custom Resource
@@ -59,6 +55,7 @@ def apiStatus(meta, spec, status, body, namespace, labels, name, **kwargs):
     Returns:
         Dict: The apiStatus status that is put into the API Custom Resource status field.
 
+    :meta public:
     """
     componentName = labels['oda.tmforum.org/componentName']
 
@@ -82,128 +79,16 @@ def apiStatus(meta, spec, status, body, namespace, labels, name, **kwargs):
                     if spec['apitype'] == 'prometheus':
                         # create a ServiceMonitor resource
                         logWrapper(logging.INFO, 'apiStatus', 'apiStatus', 'api/' + name, componentName, "Patching", "Prometheus Service Monitor")
-                        createOrPatchObservability(True, spec, namespace, name, 'apiStatus', componentName)
+                        createOrPatchServiceMonitor(True, spec, namespace, name, 'apiStatus', componentName)
                 return createOrPatchVirtualService(True, spec, namespace, name, 'apiStatus', componentName)
-
-    # if we get here then we are creating a new API            
     logWrapper(logging.INFO, 'apiStatus', 'apiStatus', 'api/' + name, componentName, "Creating", "Istio Virtual Service")    
     # if the apitype of the api is 'prometheus' then we need to also create a ServiceMonitor resource
     if 'apitype' in spec.keys():
         if spec['apitype'] == 'prometheus':
             # create a ServiceMonitor resource
             logWrapper(logging.INFO, 'apiStatus', 'apiStatus', 'api/' + name, componentName, "Creating", "Prometheus Service Monitor")    
-            createOrPatchObservability(False, spec, namespace, name, 'apiStatus', componentName)
+            createOrPatchServiceMonitor(False, spec, namespace, name, 'apiStatus', componentName)
     return createOrPatchVirtualService(False, spec, namespace, name, 'apiStatus', componentName)
-
-def createOrPatchObservability(patch, spec, namespace, name, inHandler, componentName): 
-    """Helper function to switch between the different patterns for scraping Prometheus APIs.
-    
-    Args:
-        * patch (Boolean): True to patch an existing ServiceMonitor; False to create a new ServiceMonitor. 
-        * spec (Dict): The spec from the API Resource showing the intent (or desired state) 
-        * namespace (String): The namespace for the API Custom Resource
-        * name (String): The name of the API Custom Resource
-        * inHandler (String): The name of the handler function calling this function
-        * componentName (String): The name of the ODA Component that the API is part of
-
-    Returns:
-        nothing    
-    """
-    if OPENMETRICS_IMPLEMENTATION == 'ServiceMonitor':
-        createOrPatchServiceMonitor(patch, spec, namespace, name, inHandler, componentName)
-    elif OPENMETRICS_IMPLEMENTATION == 'PrometheusAnnotation':
-        createOrPatchPrometheusAnnotation(patch, spec, namespace, name, inHandler, componentName)
-    elif OPENMETRICS_IMPLEMENTATION == 'DataDogAnnotation':
-        createOrPatchDataDogAnnotation(patch, spec, namespace, name, inHandler, componentName)
-    else:
-        logWrapper(logging.WARNING, 'createOrPatchObservability', inHandler, 'api/' + name, componentName, "Unknown Prometheus Pattern", OPENMETRICS_IMPLEMENTATION)
-
-
-def createOrPatchPrometheusAnnotation(patch, spec, namespace, name, inHandler, componentName):   
-    logWrapper(logging.WARNING, 'createOrPatchPrometheusAnnotation', inHandler, 'api/' + name, componentName, "createOrPatchPrometheusAnnotation", "Prometheus Annotation NOT IMPLEMENTED YET")
-
-    # This implementation not creted yet. Suggestion: copy the createOrPatchDataDogAnnotation - mopst of the logic is the same
-
-    raise kopf.TemporaryError("Exception in createOrPatchPrometheusAnnotation.")   
-
-def createOrPatchDataDogAnnotation(patch, spec, namespace, name, inHandler, componentName):      
-    """Helper function to get API details for a prometheus metrics API and patch the corresponding kubernetes pod.
-    
-    Args:
-        * patch (Boolean): True to patch an existing annotation; False to create a new annotation. Makes no difference for this function.
-        * spec (Dict): The spec from the API Resource showing the intent (or desired state) 
-        * namespace (String): The namespace for the API Custom Resource
-        * name (String): The name of the API Custom Resource
-        * inHandler (String): The name of the handler function calling this function
-        * componentName (String): The name of the ODA Component that the API is part of
-
-    Returns:
-        nothing
-    """
-    logWrapper(logging.INFO, 'createOrPatchDataDogAnnotation', inHandler, 'api/' + name, componentName, "createOrPatchDataDogAnnotation", "DataDog Annotation")
-
-    # To get the pod name for the implementation, follow these steps:
-    # 1. The API has an 'implementation' field which is the name of the service that exposes the API.
-    # 2. The service will include a spec.selector which allows you to find the pod that implements the API.
-    # 3. Get the pod and amend the annotation
-
-    client = kubernetes.client
-    try:
-        # get the service
-        core_api = client.CoreV1Api()
-        service = core_api.read_namespaced_service(spec['implementation'], namespace)
-        selector = service.spec.selector
-        serviceName = service.metadata.name
-
-        logWrapper(logging.INFO, 'createOrPatchDataDogAnnotation', inHandler, 'api/' + name, componentName, "createOrPatchDataDogAnnotation selector=", selector)
-        # get the pod using the selector
-        key, value = next(iter(selector.items())) # get the first key/value pair - we don't have a way to handle multiple selectors
-        selectorQuery = key + '=' + value
-        logWrapper(logging.INFO, 'createOrPatchDataDogAnnotation', inHandler, 'api/' + name, componentName, "createOrPatchDataDogAnnotation selectorQuery=", selectorQuery)
-
-        pod_list = core_api.list_namespaced_pod(namespace, label_selector=selectorQuery)
-        # get the first pod
-        pod = pod_list.items[0]
-        podName = pod.metadata.name
-        logWrapper(logging.INFO, 'createOrPatchDataDogAnnotation', inHandler, 'api/' + name, componentName, "createOrPatchDataDogAnnotation podName=", podName)
-
-        podContainers = pod.spec.containers
-        for container in podContainers:
-            logWrapper(logging.INFO, 'createOrPatchDataDogAnnotation', inHandler, 'api/' + name, componentName, "createOrPatchDataDogAnnotation container=", container.name)
-        
-        targetContainerName = podContainers[0].name # default to the first container
-
-        # prepare the annotation
-        path = None
-        if 'path' in spec.keys():
-            path=spec['path']
-        port = None
-        if 'port' in spec.keys():
-            port=spec['port']
-
-        annotationDict = {"openmetrics": 
-                { "instances": 
-                    [
-                        { "openmetrics_endpoint": "http://" + serviceName + "." + namespace + ".svc.cluster.local:" + str(port) + path,
-                            "namespace": "components","metrics": [".*"] 
-                        }    
-                    ]
-                }
-            }
-        
-        annotation = json.dumps(annotationDict)
-        logWrapper(logging.INFO, 'createOrPatchDataDogAnnotation', inHandler, 'api/' + name, componentName, "createOrPatchDataDogAnnotation patching pod with annotation=", annotation)
-
-
-        pod.metadata.annotations['ad.datadoghq.com/' + targetContainerName + '.checks'] = annotation
-        # patch the pod
-        core_api.patch_namespaced_pod(podName, namespace, pod)
-
-        logWrapper(logging.INFO, 'createOrPatchDataDogAnnotation', inHandler, 'api/' + name, componentName, "createOrPatchDataDogAnnotation pod patched with annotation=", annotation)
-
-    except ApiException as e:
-        logWrapper(logging.WARNING, 'createOrPatchDataDogAnnotation', inHandler, 'api/' + name, componentName, "Exception", e)
-        raise kopf.TemporaryError("Exception in createOrPatchDataDogAnnotation.")   
 
 def createOrPatchServiceMonitor(patch, spec, namespace, name, inHandler, componentName):            
     """Helper function to get API details for a prometheus metrics API and create or patch ServiceMonitor resource.
@@ -218,6 +103,8 @@ def createOrPatchServiceMonitor(patch, spec, namespace, name, inHandler, compone
 
     Returns:
         nothing
+
+    :meta private:
     """
 
     client = kubernetes.client
@@ -228,9 +115,9 @@ def createOrPatchServiceMonitor(patch, spec, namespace, name, inHandler, compone
         if 'hostname' in spec.keys():
             hostname=spec['hostname']
 
-        SERVICE_MONITOR_GROUP = " monitoring.googleapis.com"
+        SERVICE_MONITOR_GROUP = "monitoring.googleapis.com"
         SERVICE_MONITOR_VERSION = "v1"
-        SERVICE_MONITOR_PLURAL = "servicemonitors"
+        SERVICE_MONITOR_PLURAL = "PodMonitorings"
         SERVICE_MONITOR_KIND = "PodMonitoring"
 
         # FIX required to optionally add hostname instead of ["*"]
@@ -250,15 +137,15 @@ def createOrPatchServiceMonitor(patch, spec, namespace, name, inHandler, compone
                 "endpoints": [
                     {
                         "path": spec['path'],
-                        "interval": "10s",
+                        "interval": "15s",
                         "scheme": "http",
-                        "port": spec['port']
+                        "Port": spec['port']
                     }
                 ]
             }
         }
-        if 'basicAuth' in spec.keys():
-            body['spec']['endpoints'][0]['basicAuth'] = spec['basicAuth']
+        #if 'basicAuth' in spec.keys():
+            #body['spec']['endpoints'][0]['basicAuth'] = spec['basicAuth']
 
         # Make it our child: assign the namespace, name, labels, owner references, etc.
         kopf.adopt(body)
@@ -278,8 +165,8 @@ def createOrPatchServiceMonitor(patch, spec, namespace, name, inHandler, compone
             logWrapper(logging.INFO, 'createOrPatchServiceMonitor', inHandler, 'api/' + name, componentName, "Service Monitor created", name)
             return 
     except ApiException as e:
-        logWrapper(logging.WARNING, 'createOrPatchPodMonitor', inHandler, 'api/' + name, componentName, "Exception when calling CustomObjectsApi", e)
-        raise kopf.TemporaryError("Exception creating PodMonitoring.")   
+        logWrapper(logging.WARNING, 'createOrPatchServiceMonitor', inHandler, 'api/' + name, componentName, "Exception when calling CustomObjectsApi", e)
+        raise kopf.TemporaryError("Exception creating ServiceMonitor.")   
 
 
 def createOrPatchVirtualService(patch, spec, namespace, inAPIName, inHandler, componentName):            
@@ -295,6 +182,8 @@ def createOrPatchVirtualService(patch, spec, namespace, inAPIName, inHandler, co
 
     Returns:
         Dict: The updated apiStatus that will be put into the status field of the API resource.
+
+    :meta private:
     """
     
     client = kubernetes.client
