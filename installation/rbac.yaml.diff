@@ -1,0 +1,100 @@
+diff --git a/charts/controller/templates/rbac.yaml b/charts/controller/templates/rbac.yaml
+index b1c6d90..77b1ec5 100644
+--- a/charts/controller/templates/rbac.yaml
++++ b/charts/controller/templates/rbac.yaml
+@@ -26,10 +26,10 @@ rules:
+   # Framework: posting the events about the handlers progress/errors.
+   - apiGroups: [events.k8s.io]
+     resources: [events]
+-    verbs: [create]
++    verbs: [create,list]
+   - apiGroups: [""]
+     resources: [events]
+-    verbs: [create]
++    verbs: [create,list]
+ 
+   # Application: read-only access for watching cluster-wide.
+   - apiGroups: [oda.tmforum.org]
+@@ -72,11 +72,22 @@ rules:
+     resources: [pods, persistentvolumeclaims]
+     verbs: [create]
+ 
++  - apiGroups: [""]
++    resources: [endpoints]
++    verbs: [get,list,watch]
++  - apiGroups: [""]
++    resources: [imagestreamtags]
++    verbs: [create, update]
++
+   # Istio services
+   - apiGroups: [networking.istio.io]
+     resources: [virtualservices]
+     verbs: [list, watch, patch, get, create, update, delete]
+ 
++  - apiGroups: ["maistra.io"]
++    resources: [servicemeshmemberrolls]
++    verbs: [get,list,watch]
++
+   # Prometheus servicemonitor
+   - apiGroups: [monitoring.coreos.com]
+     resources: [servicemonitors]
+@@ -105,10 +116,10 @@ rules:
+   # Framework: posting the events about the handlers progress/errors.
+   - apiGroups: [events.k8s.io]
+     resources: [events]
+-    verbs: [create]
++    verbs: [create,list]
+   - apiGroups: [""]
+     resources: [events]
+-    verbs: [create]
++    verbs: [create,list]
+ 
+   # Application: watching & handling for the custom resource we declare.
+   - apiGroups: [oda.tmforum.org]
+@@ -121,7 +132,7 @@ rules:
+     resources: [apis]
+     verbs: [list, watch, patch, get, create, update, delete]
+   - apiGroups: [""] # "" indicates the core API group
+-    resources: ["services", "services/status", "pods", "persistentvolumeclaims", "persistentvolumeclaims/status", "namespaces", "configmaps", "configmaps/status", "secret", "secret/status", "serviceaccounts", "serviceaccounts/status"]
++    resources: ["services", "services/status", "pods", "persistentvolumeclaims", "persistentvolumeclaims/status", "namespaces", "configmaps", "configmaps/status", "secret", "secret/status", "serviceaccounts", "serviceaccounts/status", "imagestreams", "imagetags", "replicationcontrollers" ]
+     verbs: [list, watch, patch, get, create, update, delete]
+   - apiGroups: ["networking.k8s.io"]
+     resources: ["ingresses", "ingresses/status"]
+@@ -147,6 +158,37 @@ rules:
+ #  - apiGroups: [""]
+ #    resources: [pods, persistentvolumeclaims]
+ #    verbs: [create, watch, list]
++    verbs: [update]
++  - apiGroups: ["oda.tmforum.org"]
++    resources: [components/finalizers]
++    verbs: [update]
++  - apiGroups: [""]
++    resources: ["pods/log", "builds", "imagestreams/layers"]
++    verbs: [get]
++  - apiGroups: [""]
++    resources: ["builds/details", "imagestreams/layers"]
++    verbs: [update]
++  - apiGroups: [""]
++    resources: ["replicationcontrollers/scale"]
++    verbs: [get, update]
++  - apiGroups: [""]
++    resources: [imagestreamtags]
++    verbs: [create, update]
++  - apiGroups: ["build.openshift.io"]
++    resources: ["builds"]
++    verbs: [get]
++  - apiGroups: ["build.openshift.io"]
++    resources: ["builds/details"]
++    verbs: [update]
++  - apiGroups: ["image.openshift.io"]
++    resources: ["imagestreams", "imagetags"]
++    verbs: [create]
++  - apiGroups: ["image.openshift.io"]
++    resources: ["imagestreams/layers", "imagetags"]
++    verbs: [get,update]
++  - apiGroups: ["image.openshift.io"]
++    resources: [imagestreamtags]
++    verbs: [create, update]
+ 
+ ---
+ apiVersion: rbac.authorization.k8s.io/v1
