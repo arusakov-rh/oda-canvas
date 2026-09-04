@@ -290,13 +290,8 @@ canvas-vault:
       statefulSet:
         securityContext:
           pod:
-            fsGroup: 1000
-            runAsGroup: 1000
             runAsNonRoot: true
-            runAsUser: 100
-            supplementalGroups:
-            - 1000
-          container: 
+          container:
             allowPrivilegeEscalation: false
             privileged: false
             readOnlyRootFilesystem: true

@@ -1,0 +1,37 @@
+# OpenShift value profile for the canvas-oda umbrella chart.
+#
+# Merges on top of values.yaml. Cluster prerequisites (operators, Istio, SCCs)
+# are documented in installation/OCP-process.md.
+#
+#   helm install canvas charts/canvas-oda -n canvas \
+#     -f charts/canvas-oda/values-openshift.yaml \
+#     --timeout 600s
+#
+# CRC-specific overrides (e.g. Istio pre-check) are not included here;
+# see installation/OCP-process.md § CodeReady Containers (CRC).
+
+global:
+  openshift: true
+
+cert-manager-init:
+  cert-manager:
+    # Use openshift-cert-manager-operator from OperatorHub instead.
+    enabled: false
+
+# CRC only: istio-ingress has no LoadBalancer external IP, so the pre-install
+# hook fails. On a cluster where istio-ingress gets an external IP, leave the
+# default (true) or omit this block.
+# preqrequisitechecks:
+#   istio: false
+
+canvas-vault:
+  vault:
+    global:
+      openshift: true
+    server:
+      image:
+        # RH-certified UBI image (newer, therefore BSL, not MPL 1.14.8).
+        # Verify tag in catalog:
+        # https://catalog.redhat.com/software/containers/hashicorp/vault
+        repository: registry.connect.redhat.com/hashicorp/vault
+        tag: "1.20.4-ubi"
