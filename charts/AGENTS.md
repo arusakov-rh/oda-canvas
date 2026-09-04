@@ -45,6 +45,7 @@ Each sub-chart follows:
 
 - Global values use `global.*` pattern (e.g., `global.image.registry`, `global.imagePullSecrets`)
 - Umbrella chart `canvas-oda/values.yaml` (~630 lines) contains configuration for all sub-charts
+- `canvas-oda/values-openshift.yaml` — OpenShift profile merged with `-f` at install time (see `installation/openshift/README.md`)
 - `canvas-oda/values.schema.json` validates values
 
 ### Templates
