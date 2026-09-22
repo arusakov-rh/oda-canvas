@@ -38,6 +38,10 @@ rules:
   - apiGroups: [oda.tmforum.org]
     resources: [components, components/status]
     verbs: [list, watch, patch, get]
+  # Required on OpenShift when creating child resources with blockOwnerDeletion.
+  - apiGroups: [oda.tmforum.org]
+    resources: [components/finalizers]
+    verbs: [update]
   - apiGroups: [oda.tmforum.org]
     resources: [exposedapis]
     verbs: [list, watch, patch, get, create, update, delete]

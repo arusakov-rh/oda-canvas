@@ -21,6 +21,9 @@ Tested on OpenShift 4.x with OSSM 3 (Istio Sail operator). CRC-specific notes ar
   helm resolve-deps
   cd ../..
   ```
+  Re-run `helm resolve-deps` after changing any subchart under `charts/`; the umbrella
+  chart installs from packaged `.tgz` files in `charts/canvas-oda/charts/`, not live
+  source paths.
 
 
 ## 1. Install Operators
@@ -82,7 +85,7 @@ oc adm policy add-scc-to-user nonroot-v2 -z canvas-keycloak -n canvas
 ## 4. Install Canvas
 
 OpenShift chart overrides are in
-[`charts/canvas-oda/values-openshift.yaml`](../../charts/canvas-oda/values-openshift.yaml):
+`[charts/canvas-oda/values-openshift.yaml](../../charts/canvas-oda/values-openshift.yaml)`:
 bundled cert-manager off, Vault RH UBI image, `global.openshift`, etc.
 
 ```
@@ -101,15 +104,22 @@ See [installation/README.md](../README.md#5-reference-implementation) for why `-
 oc new-project components || true
 oc adm policy add-scc-to-user anyuid -z default -n components
 oc adm policy add-scc-to-user anyuid -z deployer -n components
+# CTK UC002-F005/F006 use odacompns-1 (same anyuid need as components for CTK images)
+oc new-project odacompns-1 || true
+oc adm policy add-scc-to-user anyuid -z default -n odacompns-1
+oc adm policy add-scc-to-user anyuid -z deployer -n odacompns-1
 cd feature-definition-and-test-kit
 npm install
 npm start
 ```
 
+See [Executing-tests.md](../../feature-definition-and-test-kit/Executing-tests.md) for `.env`, utility `npm install`s, and tagged runs.
+
 
 ## Uninstall
 
 ```
+helm uninstall ctk -n components
 helm uninstall canvas -n canvas
 oc delete pvc -n canvas --all
 oc delete pvc -n canvas-vault --all
@@ -138,12 +148,24 @@ Or uncomment the block in `values-openshift.yaml` (marked CRC-only there).
 
 ### MongoDB image pull
 
-As of this writing, `mongo` shortname resolves to a JFrog repo that is no more available for general public. A full OCP cluster is expected to have a more up-to-date mapping and to resolve `mongo` to another repo that has the image in public access (or at least in Red Hat registries).
+On CRC, ensure `mongo:*` resolves to `docker.io/library/mongo:*` in the cluster image registry (shortname mapping). Without that, `mongo` may resolve to an unreachable private registry and pods will sit in `ImagePullBackOff`.
 
-If `canvas-svcinv-mongodb` is in `ImagePullBackOff`, override explicitly:
+### API gateway hostname
+
+The API operator uses `api-operator-istio.configmap.publicHostname` for Istio
+VirtualService `hosts` and for API URLs written to Component status. If unset,
+VirtualServices default to `*` (routing still works), but on CRC there is no
+ingress LoadBalancer hostname to discover — exposed APIs will not get usable
+public URLs and clients that match on host (e.g. port-forward with
+`Host: localhost`) need an explicit value.
+
+Set it at install to the hostname you will use to reach the gateway — **not**
+`host:port` (Istio rejects a port in the host field). For local access via
+port-forward, use `localhost`; with an OpenShift Route, use the route hostname
+(e.g. `components.apps-crc.testing`).
 
 ```
---set canvas-info-service.mongodb.image=docker.io/library/mongo:6.0
+--set api-operator-istio.configmap.publicHostname=localhost
 ```
 
 ### Example: CRC install
@@ -153,9 +175,9 @@ helm install canvas charts/canvas-oda \
   -n canvas \
   -f charts/canvas-oda/values-openshift.yaml \
   --set preqrequisitechecks.istio=false \
-  --set canvas-info-service.mongodb.image=docker.io/library/mongo:6.0 \
+  --set api-operator-istio.configmap.publicHostname=localhost \
   --timeout 600s
 ```
 
-You can also save the two `--set` lines in a local `values-crc.yaml`
+You can also save the `--set` lines in a local `values-crc.yaml`
 and add `-f values-crc.yaml`, to save on typing.

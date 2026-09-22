@@ -41,6 +41,10 @@ rules:
   - apiGroups: [oda.tmforum.org]
     resources: [exposedapis]
     verbs: [list, watch, patch, get, create, update, delete]
+  # Required on OpenShift when creating child resources with blockOwnerDeletion.
+  - apiGroups: [oda.tmforum.org]
+    resources: [exposedapis/finalizers]
+    verbs: [update]
   - apiGroups: [oda.tmforum.org]
     resources: [secretsmanagements]
     verbs: [list, watch, patch, get, create, update, delete]    
