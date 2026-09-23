@@ -104,7 +104,7 @@ def handle_party_role_event(doc):
         component = party_role["href"].split("/")[3]
 
         try:  # to authenticate and get a token
-            token = kc.get_token(username, password)
+            token = kc.get_token("password", username, password)
         except RuntimeError as e:
             logger.error(
                 format_cloud_event(
@@ -202,7 +202,7 @@ def handle_permission_spec_set_event(doc):
         component = permission_spec_set["href"].split("/")[3]
 
         try:  # to authenticate and get a token
-            token = kc.get_token(username, password)
+            token = kc.get_token("password", username, password)
         except RuntimeError as e:
             logger.error(
                 format_cloud_event(

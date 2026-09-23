@@ -44,9 +44,26 @@ To run python module standalone:
 4. Set the environment variables for login to keycloak
 
 ```
+$env:KEYCLOAK_AUTH_TYPE = "password"   # default
 $env:KEYCLOAK_USER = "admin"
 $env:KEYCLOAK_PASSWORD = "adpass"
 ```
+
+Alternatively use a Keycloak confidential client with a service account.
+The same `KEYCLOAK_USER` / `KEYCLOAK_PASSWORD` variables hold the client id and secret:
+
+```
+$env:KEYCLOAK_AUTH_TYPE = "clientCredentials"
+$env:KEYCLOAK_USER = "canvas-identity-operator"
+$env:KEYCLOAK_PASSWORD = "..."
+# optional; default master
+$env:KEYCLOAK_TOKEN_REALM = "master"
+```
+
+Create the client in the token realm (usually `master`), enable **Client
+authentication** and **Service accounts**, and grant the service account
+roles from `realm-management` sufficient to manage the Canvas realm
+(e.g. `manage-clients`, `view-clients`, or `realm-admin`).
 
 5. Configure a new realm `odari` in keycloak.
 6. Configure a new client `r1-productcatalog` in the `odari` realm.

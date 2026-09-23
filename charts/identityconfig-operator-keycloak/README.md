@@ -4,14 +4,35 @@
 
 A helm chart to deploy the identityconfig operator for keycloak
 
+## Keycloak Admin API credentials
+
+Default `credentials.authType` is `password` (admin user + password via `admin-cli`).
+
+For production, prefer a confidential client service account. Reuse
+`credentials.user` / `credentials.pass` as the client id and secret:
+
+```yaml
+identityconfig-operator-keycloak:
+  credentials:
+    authType: clientCredentials
+    user: canvas-identity-operator
+    pass: "..."
+    tokenRealm: master
+```
+
+This works with any Keycloak (upstream, Bitnami, RHBK). The service account needs
+Admin API rights on the Canvas realm (typically `realm-management` roles in `master`).
+
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | configmap.kcrealm | string | `"odari"` |  |
 | configmap.loglevel | string | `"20"` |  |
-| credentials.pass | string | `"adpass"` |  |
-| credentials.user | string | `"admin"` |  |
+| credentials.authType | string | `"password"` | `password` or `clientCredentials` |
+| credentials.pass | string | `"adpass"` | Password, or client secret when `authType=clientCredentials` |
+| credentials.tokenRealm | string | `"master"` | Realm that issues the Admin API token |
+| credentials.user | string | `"admin"` | Username, or client id when `authType=clientCredentials` |
 | deployment.credentialName | string | `"istio-ingress-cert"` |  |
 | deployment.dataDog.enabled | bool | `false` |  |
 | deployment.hostName | string | `"*"` |  |

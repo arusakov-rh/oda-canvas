@@ -132,10 +132,12 @@ def log_all_registered_listeners():
 
 # Script setup --------------
 
-username = os.environ.get("KEYCLOAK_USER")
-password = os.environ.get("KEYCLOAK_PASSWORD")
 kcBaseURL = os.environ.get("KEYCLOAK_BASE")
 kcRealm = os.environ.get("KEYCLOAK_REALM")
+kcAuthType = os.environ.get("KEYCLOAK_AUTH_TYPE", "password")
+kcUser = os.environ.get("KEYCLOAK_USER")
+kcPassword = os.environ.get("KEYCLOAK_PASSWORD")
+kcTokenRealm = os.environ.get("KEYCLOAK_TOKEN_REALM", "master")
 
 canvassystem_client = "canvassystem"
 
@@ -191,7 +193,7 @@ def identityConfig(
     logw.debugInfo("security_client_add called", body)
 
     try:  # to authenticate and get a token
-        token = kc.get_token(username, password)
+        token = kc.get_token(kcAuthType, kcUser, kcPassword, kcTokenRealm)
     except RuntimeError as e:
         logw.error("secCon could not GET Keycloak token", str(e))
 
@@ -392,7 +394,7 @@ def security_client_delete(meta, spec, status, body, namespace, labels, name, **
     )
 
     try:  # to authenticate and get a token
-        token = kc.get_token(username, password)
+        token = kc.get_token(kcAuthType, kcUser, kcPassword, kcTokenRealm)
     except Exception as e:
         logw.error("IDConfop could not GET Keycloak token", str(e))
         raise kopf.TemporaryError(

@@ -19,10 +19,16 @@ deployment:
   hostName: "*"
   httpsRedirect: true
   credentialName: istio-ingress-cert    
-#We reuse the admin user created on keycloak instalation
+# Keycloak Admin API credentials for the identity operator / listener.
+# authType:
+#   password (default) — user/pass = admin username/password via admin-cli
+#   clientCredentials  — user/pass = confidential client id / client secret
 credentials:
+  authType: password
   user: admin
   pass: adpass
+  # Realm that issues the Admin API token (usually master)
+  tokenRealm: master
 configmap:
   #kcbase: http://canvas-keycloak:8088/auth # trying to parameterise this in the configmap
   kcrealm: odari

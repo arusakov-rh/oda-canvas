@@ -6,30 +6,54 @@ class Keycloak:
     def __init__(self, url):
         self._url = url
 
-    def get_token(self, user: str, pwd: str) -> str:
-        """
-        Takes the admin username and password and returns a session
-        token for future Bearer authentication
-
-        Returns the token, or raises an exception for the caller to
-        catch
-        """
+    def _request_token(self, token_realm: str, data: dict) -> str:
+        """POST to the token endpoint and return access_token."""
+        token_url = (
+            f"{self._url}/realms/{token_realm}/protocol/openid-connect/token"
+        )
         try:
-            r = requests.post(
-                self._url + "/realms/master/protocol/openid-connect/token",
-                data={
-                    "username": user,
-                    "password": pwd,
-                    "grant_type": "password",
-                    "client_id": "admin-cli",
-                },
-            )
+            r = requests.post(token_url, data=data)
             r.raise_for_status()
             return r.json()["access_token"]
         except requests.HTTPError as e:
             raise RuntimeError(
-                f"get_token failed with HTTP status {r.status_code}: {e}"
+                f"token request failed with HTTP status {r.status_code}: {e}"
             ) from None
+
+    def get_token(
+        self,
+        auth_type: str,
+        user: str,
+        pwd: str,
+        token_realm: str = "master",
+    ) -> str:
+        """
+        Obtain an Admin API token using the configured auth mode.
+
+        ``auth_type``:
+          - ``password`` (default): ``user`` / ``pwd`` as admin username/password
+            via ``admin-cli``
+          - ``clientCredentials``: ``user`` / ``pwd`` as client id / secret
+
+        ``token_realm`` is the realm that issues the token (almost always
+        ``master``). It is independent of the Canvas component realm
+        (e.g. ``odari``).
+        """
+        normalized = (auth_type or "password").replace("_", "").replace("-", "").lower()
+        if normalized in ("clientcredentials", "serviceaccount"):
+            data = {
+                "grant_type": "client_credentials",
+                "client_id": user,
+                "client_secret": pwd,
+            }
+        else:
+            data = {
+                "username": user,
+                "password": pwd,
+                "grant_type": "password",
+                "client_id": "admin-cli",
+            }
+        return self._request_token(token_realm, data)
 
     def create_client(self, client: str, url: str, token: str, realm: str) -> None:
         """

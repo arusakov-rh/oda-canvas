@@ -9,5 +9,7 @@ data:
   LOGGING: {{ .Values.configmap.loglevel | quote }}
   KEYCLOAK_BASE: "http://{{ .Release.Name }}-keycloak-headless.{{ .Release.Namespace }}:{{ .Values.deployment.keycloak.http }}/auth"
   KEYCLOAK_REALM: "{{ .Values.configmap.kcrealm }}"
+  KEYCLOAK_AUTH_TYPE: {{ .Values.credentials.authType | quote }}
+  KEYCLOAK_TOKEN_REALM: {{ .Values.credentials.tokenRealm | default "master" | quote }}
   COMPONENT_NAMESPACE: "{{ .Values.deployment.monitoredNamespaces }}"
   COMPONENT_NAMESPACES_CLI: {{ include "identityconfig-operator-keycloak.monitoredNamespacesCLIOpts" . }}

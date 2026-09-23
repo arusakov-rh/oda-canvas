@@ -43,10 +43,12 @@ def format_cloud_event(message: str, subject: str) -> str:
 # Initial setup ----------------------------------------------------------
 
 logging_level = os.environ.get("LOGGING", 10)
-username = os.environ.get("KEYCLOAK_USER")
-password = os.environ.get("KEYCLOAK_PASSWORD")
+kcAuthType = os.environ.get("KEYCLOAK_AUTH_TYPE", "password")
+kcUser = os.environ.get("KEYCLOAK_USER")
+kcPassword = os.environ.get("KEYCLOAK_PASSWORD")
 kcBaseURL = os.environ.get("KEYCLOAK_BASE")
 kcRealm = os.environ.get("KEYCLOAK_REALM")
+kcTokenRealm = os.environ.get("KEYCLOAK_TOKEN_REALM", "master")
 logger = logging.getLogger()
 logger.setLevel(int(logging_level))  # Logging level default = INFO
 logger.info("Logging set to %s", logging_level)
@@ -129,7 +131,7 @@ def handle_party_role_event(doc):
         component = party_role["href"].split("/")[3]
 
         try:  # to authenticate and get a token
-            token = kc.get_token(username, password)
+            token = kc.get_token(kcAuthType, kcUser, kcPassword, kcTokenRealm)
         except RuntimeError as e:
             logger.error(
                 format_cloud_event(
@@ -227,7 +229,7 @@ def handle_permission_spec_set_event(doc):
         component = permission_spec_set["href"].split("/")[1]
 
         try:  # to authenticate and get a token
-            token = kc.get_token(username, password)
+            token = kc.get_token(kcAuthType, kcUser, kcPassword, kcTokenRealm)
         except RuntimeError as e:
             logger.error(
                 format_cloud_event(
@@ -326,13 +328,14 @@ def status_endpoint():
         "environment": {
             "KEYCLOAK_BASE": kcBaseURL,
             "KEYCLOAK_REALM": kcRealm,
-            "KEYCLOAK_USER": username if username else "not_set"
+            "KEYCLOAK_AUTH_TYPE": kcAuthType,
+            "KEYCLOAK_USER": kcUser if kcUser else "not_set",
         }
     }
     
     # Test Keycloak connection
     try:
-        token = kc.get_token(username, password)
+        token = kc.get_token(kcAuthType, kcUser, kcPassword, kcTokenRealm)
         if token:
             status_info["keycloak_connection"] = "connected"
         else:
